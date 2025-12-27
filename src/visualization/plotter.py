@@ -3,9 +3,34 @@
 """
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.font_manager as fm
 from typing import List
 from src.data.models import MatchData, MomentumScore, TurningPoint
 from src.analysis.metrics import calculate_time_window_metrics, calculate_momentum_score
+
+# 한글 폰트 설정
+def setup_korean_font():
+    """한글 폰트 설정"""
+    # macOS에서 사용 가능한 한글 폰트 목록
+    korean_fonts = ['AppleGothic', 'NanumGothic', 'Malgun Gothic', 'NanumBarunGothic']
+    
+    # 시스템에 설치된 폰트 확인
+    available_fonts = [f.name for f in fm.fontManager.ttflist]
+    
+    # 사용 가능한 한글 폰트 찾기
+    for font in korean_fonts:
+        if font in available_fonts:
+            plt.rcParams['font.family'] = font
+            plt.rcParams['axes.unicode_minus'] = False  # 마이너스 기호 깨짐 방지
+            return font
+    
+    # 한글 폰트를 찾지 못한 경우 경고
+    print("경고: 한글 폰트를 찾을 수 없습니다. 한글이 깨질 수 있습니다.")
+    plt.rcParams['axes.unicode_minus'] = False
+    return None
+
+# 모듈 로드 시 한글 폰트 설정
+setup_korean_font()
 
 
 def plot_momentum_curve(
