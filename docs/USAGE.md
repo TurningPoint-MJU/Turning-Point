@@ -91,6 +91,18 @@ for tp in result['turning_points']:
     print(f"{tp['minute']}분: {tp['explanation']}")
 ```
 
+### GET /analyze/{game_id}
+
+경기 ID로 변곡점을 분석합니다.
+
+```python
+import requests
+
+url = "http://localhost:8000/analyze/126288"
+response = requests.get(url)
+result = response.json()
+```
+
 ### POST /visualize
 
 경기 흐름 그래프를 생성합니다.
@@ -104,6 +116,49 @@ response = requests.post(
     json=match_data.dict(),
     params={"save_path": "output.png"}
 )
+```
+
+### GET /analyze/{game_id}/players/{turning_point_minute}
+
+특정 변곡점 시점의 선수 분석 결과를 가져옵니다.
+
+```python
+import requests
+
+url = "http://localhost:8000/analyze/126288/players/25"
+response = requests.get(url, params={"top_n": 5})
+result = response.json()
+
+print(f"주요 선수: {len(result['key_players'])}명")
+for player in result['key_players']:
+    print(f"- {player['player_name']}: 영향도 {player['impact_score']:.1f}")
+    print(f"  슈팅: {player['shots']}, 패스: {player['passes']}, xG: {player['xg_contribution']:.2f}")
+```
+
+### GET /visualize/{game_id}/heatmap/{turning_point_minute}
+
+변곡점 시점의 선수 위치 히트맵을 생성합니다.
+
+```python
+import requests
+
+url = "http://localhost:8000/visualize/126288/heatmap/25"
+response = requests.get(url)
+result = response.json()
+print(f"히트맵 저장: {result['save_path']}")
+```
+
+### GET /visualize/{game_id}/movements/{turning_point_minute}
+
+변곡점 시점의 주요 선수 움직임 그래프를 생성합니다.
+
+```python
+import requests
+
+url = "http://localhost:8000/visualize/126288/movements/25"
+response = requests.get(url, params={"top_n": 5})
+result = response.json()
+print(f"움직임 그래프 저장: {result['save_path']}")
 ```
 
 ## 실제 K리그 데이터 연동
@@ -165,8 +220,47 @@ turning_points = detect_turning_points(match_data)
 
 ### 그래프 해석
 
+#### 모멘텀 곡선 그래프
 - **파란색 영역**: 홈팀 우세 구간
 - **빨간색 영역**: 원정팀 우세 구간
 - **별표 마커**: 탐지된 변곡점
 - **0선**: 경기 주도권이 균형인 상태
+
+#### 히트맵 그래프
+- **히트맵 색상**: 선수 활동 빈도 (노란색 → 빨간색 = 높은 빈도)
+- **청록색 화살표**: 성공한 패스 연결
+- **주황색 점선 화살표**: 실패한 패스 연결
+- **별 모양 마커**: 슈팅 위치 (크기와 색상은 xG에 비례)
+- **초록색 세로선**: 공격 라인 (공격 이벤트 평균 위치)
+- **빨간색 세로선**: 수비 라인 (수비 이벤트 평균 위치)
+- **색상 원**: 주요 선수 위치 및 활동 영역
+
+#### 선수 움직임 그래프
+- **히트맵**: 선수별 위치 분포 (활동 빈도)
+- **빨간 별**: 슈팅 위치
+- **청록 사각형**: 성공한 패스 위치
+- **주황 X**: 실패한 패스 위치
+- **초록 삼각형**: 수비 액션 위치
+
+## 선수 분석 기능
+
+### 선수 영향도 계산
+
+변곡점 시점에 가장 큰 영향을 준 선수들을 식별합니다.
+
+**영향도 점수 계산 공식:**
+```
+영향도 = xG 기여도 × 40% + 전진 패스 × 25% + 상대 진영 활동 × 20% + 수비 액션 × 15%
+```
+
+### 선수 활동 정보
+
+각 선수에 대해 다음 정보를 제공합니다:
+- 총 이벤트 수
+- 슈팅 횟수 및 xG 기여도
+- 패스 횟수 및 성공률
+- 전진 패스 횟수
+- 수비 액션 횟수
+- 상대 진영 이벤트 횟수
+- 평균 위치 좌표
 

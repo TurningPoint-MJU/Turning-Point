@@ -24,6 +24,8 @@ wheels/
 *.png
 *.jpg
 *.pdf
+NOTEBOOK_GUIDE.md
+create_notebook.py
 .DS_Store
 .vscode/
 .idea/

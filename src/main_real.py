@@ -6,7 +6,16 @@ from pathlib import Path
 from src.data.loader import load_match_by_id, list_available_matches
 from src.analysis.turning_point import detect_turning_points
 from src.explanation.generator import ExplanationGenerator
-from src.visualization.plotter import plot_momentum_curve
+from src.visualization.plotter import (
+    plot_momentum_curve,
+    plot_player_heatmap,
+    plot_player_movements
+)
+from src.analysis.player_analysis import (
+    extract_player_activities,
+    get_key_players,
+    get_player_event_summary
+)
 
 # 프로젝트 루트 경로
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -79,6 +88,38 @@ def main():
         output_path = f"momentum_curve_{game_id}.png"
         plot_momentum_curve(match_data, turning_points, output_path)
         print(f"그래프가 '{output_path}'로 저장되었습니다.")
+        
+        # 변곡점별 선수 분석 및 히트맵 생성
+        if turning_points:
+            print("\n변곡점별 선수 분석 중...")
+            for tp in turning_points:
+                print(f"\n[{tp.minute}분] 변곡점 선수 분석...")
+                
+                # 선수 활동 추출
+                player_activities = extract_player_activities(match_data, tp)
+                
+                if player_activities:
+                    # 주요 선수 식별
+                    key_players = get_key_players(player_activities, top_n=5)
+                    
+                    print(f"  분석된 선수 수: {len(player_activities)}")
+                    print(f"  주요 선수 (상위 5명):")
+                    for player_name, activity, impact_score in key_players:
+                        print(f"    - {player_name}: 영향도 {impact_score:.1f} "
+                              f"(슈팅: {activity.shots}, 패스: {activity.passes}, "
+                              f"xG: {activity.xg_contribution:.2f})")
+                    
+                    # 히트맵 생성
+                    heatmap_path = f"heatmap_{game_id}_{tp.minute}.png"
+                    plot_player_heatmap(match_data, tp, player_activities, heatmap_path)
+                    print(f"  히트맵 저장: {heatmap_path}")
+                    
+                    # 선수 움직임 시각화
+                    movements_path = f"movements_{game_id}_{tp.minute}.png"
+                    plot_player_movements(match_data, tp, player_activities, top_n=5, save_path=movements_path)
+                    print(f"  선수 움직임 그래프 저장: {movements_path}")
+                else:
+                    print(f"  해당 시점의 선수 데이터를 찾을 수 없습니다.")
         
     except Exception as e:
         print(f"\n오류 발생: {e}")
