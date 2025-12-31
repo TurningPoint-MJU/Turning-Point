@@ -154,9 +154,9 @@ uvicorn src.api.main:app --reload
 - `heatmap_{game_id}_{minute}.png`: 변곡점 시점 선수 위치 히트맵
 - `movements_{game_id}_{minute}.png`: 주요 선수 움직임 패턴 그래프
 
-## 🤝 기여자
+## 👥 팀원 소개
 
-이 프로젝트에 기여해주신 분들:
+이 프로젝트를 함께 만든 팀원들:
 
 | 역할 | 이름 | GitHub | 기여 내용 |
 |------|------|--------|----------|
