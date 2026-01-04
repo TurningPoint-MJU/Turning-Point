@@ -114,7 +114,18 @@ def convert_kleague_to_match_data(
     # 이벤트 변환
     events: List[MatchEvent] = []
     
-    for _, row in game_data.iterrows():
+    # 패스 연결 정보를 추출하기 위해 Pass Received 이벤트를 미리 수집
+    pass_received_events = {}
+    for idx, row in game_data.iterrows():
+        if row['type_name'] == 'Pass Received':
+            time_key = (row['period_id'], row['time_seconds'])
+            pass_received_events[time_key] = {
+                'player_name': row.get('player_name_ko', ''),
+                'x': row.get('start_x'),
+                'y': row.get('start_y'),
+            }
+    
+    for idx, row in game_data.iterrows():
         # 시간 변환
         minute = convert_time_to_minute(row['period_id'], row['time_seconds'])
         
@@ -123,6 +134,10 @@ def convert_kleague_to_match_data(
         
         # 이벤트 타입 매핑
         event_type = map_event_type(row['type_name'])
+        
+        # Pass Received는 건너뛰기 (패스 이벤트에 통합)
+        if row['type_name'] == 'Pass Received':
+            continue
         
         # 성공 여부
         result = row.get('result_name', '')
@@ -145,6 +160,21 @@ def convert_kleague_to_match_data(
         if event_type == 'shot':
             xg = estimate_xg_from_shot(row)
         
+        # 패스인 경우: 패스를 받은 선수 정보 찾기
+        receiver_name = None
+        if event_type == 'pass':
+            # Pass Received 이벤트 찾기 (시간이 약간 뒤에 있음, 0.5초 이내)
+            time_key = (row['period_id'], row['time_seconds'])
+            # 정확한 시간 또는 약간 뒤의 시간 찾기
+            for offset in [0.0, 0.5, 1.0, 1.5, 2.0]:
+                check_time = (row['period_id'], row['time_seconds'] + offset)
+                if check_time in pass_received_events:
+                    received_info = pass_received_events[check_time]
+                    # 같은 팀이고 좌표가 비슷한지 확인
+                    if received_info['player_name']:
+                        receiver_name = received_info['player_name']
+                        break
+        
         # 전진 패스 여부 (패스인 경우)
         if event_type == 'pass' and x is not None:
             end_x = row.get('end_x')
@@ -166,6 +196,7 @@ def convert_kleague_to_match_data(
                 'player_name': row.get('player_name_ko', ''),
                 'end_x': row.get('end_x'),
                 'end_y': row.get('end_y'),
+                'receiver_name': receiver_name,  # 패스를 받은 선수 이름 추가
             }
         )
         

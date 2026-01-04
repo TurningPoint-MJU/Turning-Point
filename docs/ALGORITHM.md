@@ -204,11 +204,43 @@ attack_line_x = mean([event.x for event in attack_events])
 defense_line_x = mean([event.x for event in defense_events])
 ```
 
-### 패스 연결선 표시
+### 패스 네트워크 분석
 
-- 성공한 패스: 시작점 → 종료점을 청록색 실선 화살표로 표시
-- 실패한 패스: 시작점 → 종료점을 주황색 점선 화살표로 표시
-- 최대 25개(성공) + 15개(실패) 패스만 표시하여 가독성 유지
+변곡점 시점의 성공한 패스만을 대상으로 선수 간 패스 연결 관계를 분석합니다.
+
+#### 패스 연결 빈도 계산
+
+```python
+pass_connections = {(passer, receiver): count}
+```
+
+- `passer`: 패스를 한 선수 이름
+- `receiver`: 패스를 받은 선수 이름 (metadata의 `receiver_name` 필드)
+- `count`: 해당 경로의 패스 횟수
+
+#### 주요 패스 경로 식별
+
+패스 빈도가 높은 순서로 정렬하여 상위 5개 경로를 선정합니다.
+
+```python
+top_pass_paths = sorted(
+    [(passer, receiver, count) for (passer, receiver), count in pass_connections.items()],
+    key=lambda x: x[2],  # count로 정렬
+    reverse=True
+)[:5]
+```
+
+#### 패스 경로 시각화
+
+- **주요 패스 경로 (상위 5개)**: 노란색 두꺼운 선으로 표시
+  - 선 두께: `5 + count * 0.5` (최대 8px)
+  - 선 중간에 패스 횟수 표시
+  - 선수 평균 위치를 기준으로 연결선 그리기
+- **일반 성공한 패스**: 청록색 얇은 화살표로 표시
+  - 주요 경로가 아닌 패스만 표시
+  - 최대 25개 표시
+- **실패한 패스**: 주황색 점선 화살표로 표시
+  - 최대 15개 표시
 
 ### 슈팅 표시
 

@@ -3,6 +3,7 @@
 """
 from typing import List, Dict, Tuple, Optional
 from collections import defaultdict
+import numpy as np
 from src.data.models import MatchData, MatchEvent, TurningPoint
 
 
@@ -170,4 +171,76 @@ def get_player_event_summary(activity: PlayerActivity) -> Dict:
         'avg_position': {'x': round(avg_x, 1), 'y': round(avg_y, 1)} if avg_x and avg_y else None,
         'positions': activity.positions[:50]  # 최대 50개 위치만 반환
     }
+
+
+def analyze_pass_network(
+    match_data: MatchData,
+    turning_point: TurningPoint,
+    player_activities: Dict[str, PlayerActivity],
+    time_window: int = 5
+) -> Tuple[Dict[Tuple[str, str], int], List[Tuple[str, str, int]]]:
+    """
+    선수 간 패스 네트워크 분석
+    
+    Returns:
+        - pass_connections: {(passer, receiver): count} 딕셔너리
+        - top_pass_paths: [(passer, receiver, count)] 리스트 (정렬됨)
+    """
+    minute_start = max(0, turning_point.minute - time_window)
+    minute_end = min(90, turning_point.minute + time_window)
+    
+    target_team = (
+        match_data.home_team if turning_point.team_advantage == 'home'
+        else match_data.away_team
+    )
+    
+    # 해당 시간대의 성공한 패스만 필터링
+    window_events = [
+        e for e in match_data.events
+        if minute_start <= e.minute < minute_end
+        and e.team == target_team
+        and e.event_type == 'pass'
+        and e.success is True
+    ]
+    
+    # 선수 간 패스 빈도 계산
+    pass_connections = defaultdict(int)
+    
+    for event in window_events:
+        if event.metadata:
+            passer = event.metadata.get('player_name', '')
+            receiver = event.metadata.get('receiver_name', '')
+            
+            if passer and receiver and passer != receiver:
+                pass_connections[(passer, receiver)] += 1
+    
+    # 상위 패스 경로 정렬
+    top_pass_paths = sorted(
+        [(passer, receiver, count) for (passer, receiver), count in pass_connections.items()],
+        key=lambda x: x[2],
+        reverse=True
+    )
+    
+    return dict(pass_connections), top_pass_paths
+
+
+def get_player_average_positions(
+    player_activities: Dict[str, PlayerActivity]
+) -> Dict[str, Tuple[float, float]]:
+    """
+    선수별 평균 위치 계산
+    
+    Returns:
+        {player_name: (avg_x, avg_y)} 딕셔너리
+    """
+    positions = {}
+    
+    for player_name, activity in player_activities.items():
+        if activity.positions:
+            positions_array = np.array(activity.positions)
+            avg_x = float(np.mean(positions_array[:, 0]))
+            avg_y = float(np.mean(positions_array[:, 1]))
+            positions[player_name] = (avg_x, avg_y)
+    
+    return positions
 

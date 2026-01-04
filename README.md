@@ -91,10 +91,11 @@ uvicorn src.api.main:app --reload
 더 자세한 정보는 다음 문서를 참고하세요:
 
 - **[사용 가이드](docs/USAGE.md)**: API 사용법, 데이터 입력 형식, 결과 해석 방법
-- **[알고리즘 상세 설계](docs/ALGORITHM.md)**: 모멘텀 점수 계산 공식, 변곡점 탐지 알고리즘, 선수 분석 알고리즘
+- **[알고리즘 상세 설계](docs/ALGORITHM.md)**: 모멘텀 점수 계산 공식, 변곡점 탐지 알고리즘, 선수 분석 알고리즘, 패스 네트워크 분석
 - **[시각화 가이드](docs/VISUALIZATION.md)**: 각 그래프의 요소 설명 및 해석 방법
 - **[데이터 매핑 가이드](docs/DATA_MAPPING.md)**: K리그 데이터 형식 및 매핑 방법
 - **[프로젝트 기획서](docs/PROPOSAL.md)**: 프로젝트 배경, 목표, 차별성
+- **[변경 이력](docs/CHANGELOG.md)**: 주요 변경사항 및 업데이트 내역
 
 ## 🏗️ 프로젝트 구조
 
@@ -147,6 +148,10 @@ uvicorn src.api.main:app --reload
 - **Visualization**: Matplotlib
 - **Data Validation**: Pydantic
 - **API Server**: Uvicorn
+
+**참고**: 
+- 프로젝트는 Python 3.9 이상에서 작동합니다.
+- 시각화는 matplotlib를 사용하며, 실제 축구장 형태의 히트맵을 제공합니다.
 
 ## 📊 생성되는 파일
 
