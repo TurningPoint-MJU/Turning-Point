@@ -7,6 +7,7 @@ import matplotlib.font_manager as fm
 import matplotlib.gridspec as gridspec
 from matplotlib.table import Table
 import numpy as np
+import seaborn as sns
 from typing import List, Dict, Optional
 from src.data.models import MatchData, MomentumScore, TurningPoint
 from src.analysis.metrics import calculate_time_window_metrics, calculate_momentum_score
@@ -43,8 +44,17 @@ def plot_momentum_curve(
     save_path: str = None
 ):
     """
-    모멘텀 곡선 및 변곡점 시각화
+    모멘텀 곡선 및 변곡점 시각화 (개선된 버전)
     """
+    # seaborn 스타일 설정
+    sns.set_style("whitegrid")
+    sns.set_palette("husl")
+    plt.rcParams['font.size'] = 12
+    plt.rcParams['font.weight'] = 'bold'
+    
+    # 한글 폰트 설정 (기존 함수 활용)
+    setup_korean_font()
+    
     events = match_data.events
     
     # 5분 단위 모멘텀 점수 계산
@@ -66,52 +76,75 @@ def plot_momentum_curve(
         minutes.append(minute)
         momentum_scores.append(momentum)
     
-    # 그래프 생성
-    fig, ax = plt.subplots(figsize=(14, 6))
+    # 그래프 생성 (개선된 크기)
+    fig, ax = plt.subplots(figsize=(12, 8))
     
-    # 모멘텀 곡선
-    ax.plot(minutes, momentum_scores, 'b-', linewidth=2, label='경기 흐름')
-    ax.fill_between(minutes, momentum_scores, 0, alpha=0.3, where=[m > 0 for m in momentum_scores], color='blue')
-    ax.fill_between(minutes, momentum_scores, 0, alpha=0.3, where=[m < 0 for m in momentum_scores], color='red')
+    # 모멘텀 곡선 (부드럽게 개선)
+    ax.plot(minutes, momentum_scores, color='blue', lw=2.5, marker='o', 
+            markersize=6, alpha=0.9, label='경기 흐름', zorder=3)
     
-    # 0선
-    ax.axhline(y=0, color='black', linestyle='--', linewidth=1, alpha=0.5)
+    # 영역 채우기 (더 세련되게)
+    ax.fill_between(minutes, momentum_scores, 0, alpha=0.4, 
+                    where=[m > 0 for m in momentum_scores], color='blue', zorder=1)
+    ax.fill_between(minutes, momentum_scores, 0, alpha=0.4, 
+                    where=[m < 0 for m in momentum_scores], color='red', zorder=1)
     
-    # 변곡점 마커
+    # 0선 (더 명확하게)
+    ax.axhline(y=0, color='black', linestyle='--', linewidth=1.5, alpha=0.6, zorder=2)
+    
+    # 변곡점 마커 (노란색으로 강조)
+    turning_x = []
+    turning_y = []
     for tp in turning_points:
         # 해당 구간의 모멘텀 점수 찾기
         tp_minute_idx = tp.minute // 5
         if tp_minute_idx < len(momentum_scores):
             tp_momentum = momentum_scores[tp_minute_idx]
-            color = 'green' if tp.team_advantage == 'home' else 'orange'
-            ax.scatter(tp.minute, tp_momentum, s=200, color=color, 
-                      marker='*', zorder=5, edgecolors='black', linewidths=1)
+            turning_x.append(tp.minute)
+            turning_y.append(tp_momentum)
+            
+            # 변곡점 주석 (화살표 포함)
             ax.annotate(
                 f'{tp.minute}분',
                 xy=(tp.minute, tp_momentum),
-                xytext=(tp.minute, tp_momentum + 15),
-                fontsize=9,
-                ha='center',
-                bbox=dict(boxstyle='round,pad=0.3', facecolor='yellow', alpha=0.7)
+                xytext=(10, 20),
+                textcoords='offset points',
+                arrowprops=dict(arrowstyle='->', color='gold', lw=2),
+                fontsize=12,
+                ha='left',
+                bbox=dict(boxstyle='round,pad=0.4', facecolor='gold', alpha=0.9, edgecolor='black', linewidth=1.5),
+                zorder=10
             )
     
-    # 레이블 및 제목
-    ax.set_xlabel('경기 시간 (분)', fontsize=12)
-    ax.set_ylabel('경기 흐름 점수', fontsize=12)
+    # 변곡점 scatter (노란색, 큰 마커)
+    if turning_x:
+        ax.scatter(turning_x, turning_y, c='gold', s=200, zorder=10, 
+                  edgecolors='black', lw=2, marker='*', label='변곡점')
+    
+    # 레이블 및 제목 (최적화)
+    ax.set_xlabel('시간(분)', fontsize=14, fontweight='bold')
+    ax.set_ylabel('상대값', fontsize=14, fontweight='bold')
     ax.set_title(
         f'{match_data.home_team} vs {match_data.away_team} - 경기 흐름 분석',
-        fontsize=14,
-        fontweight='bold'
+        fontsize=16,
+        fontweight='bold',
+        pad=20
     )
+    
+    # 축 범위 및 틱 설정
     ax.set_xlim(-2, 92)
     ax.set_ylim(-110, 110)
-    ax.grid(True, alpha=0.3)
+    ax.set_xticks(np.arange(0, 91, 10))  # 10단위 간격
     
-    # 범례
-    home_patch = mpatches.Patch(color='blue', alpha=0.3, label=match_data.home_team)
-    away_patch = mpatches.Patch(color='red', alpha=0.3, label=match_data.away_team)
-    turning_patch = mpatches.Patch(color='yellow', label='변곡점')
-    ax.legend(handles=[home_patch, away_patch, turning_patch], loc='upper right')
+    # 그리드 (seaborn whitegrid가 자동으로 처리하지만 추가 조정)
+    ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
+    
+    # 범례 (최적화)
+    home_patch = mpatches.Patch(color='blue', alpha=0.4, label=match_data.home_team)
+    away_patch = mpatches.Patch(color='red', alpha=0.4, label=match_data.away_team)
+    turning_patch = mpatches.Patch(color='gold', label='변곡점')
+    ax.legend(handles=[home_patch, away_patch, turning_patch], 
+             loc='upper left', frameon=True, fancybox=True, shadow=True, fontsize=11)
     
     plt.tight_layout()
     
@@ -181,12 +214,10 @@ def plot_player_heatmap_basic(
     save_path: Optional[str] = None
 ):
     """
-    기본 matplotlib를 사용한 히트맵
-    실제 축구장 형태로 개선된 버전
-    - 선수 활동 히트맵
-    - 패스 네트워크 분석 (주요 패스 경로 표시)
-    - 슈팅 방향 및 xG 표시
-    - 공격/수비 라인 표시
+    개선된 히트맵 시각화
+    - 변곡점과 주요 선수 위치를 최우선으로 강조
+    - 단순화된 색상 팔레트
+    - 좌측 70% 필드, 우측 30% 통계/설명
     """
     if not player_activities:
         print("히트맵을 생성할 선수 데이터가 없습니다.")
@@ -209,220 +240,164 @@ def plot_player_heatmap_basic(
         and e.team == target_team
     ]
     
-    # 그래프 생성 - GridSpec으로 히트맵과 선수 정보 표 분리
-    fig = plt.figure(figsize=(20, 11))
-    fig.patch.set_facecolor('#22312b')
-    gs = gridspec.GridSpec(1, 2, width_ratios=[3, 1], hspace=0.1, wspace=0.05)
+    # 변곡점 관련 이벤트 추출 (변곡점 번호 표시용)
+    turning_point_events = [
+        e for e in window_events
+        if abs(e.minute - turning_point.minute) <= 2
+        and e.event_type in ['shot', 'pass', 'defense']
+        and e.x is not None and e.y is not None
+    ]
+    # 중요도 순으로 정렬 (슈팅 > 패스 > 수비)
+    event_priority = {'shot': 3, 'pass': 2, 'defense': 1}
+    turning_point_events.sort(key=lambda e: (event_priority.get(e.event_type, 0), -abs(e.minute - turning_point.minute)), reverse=True)
+    turning_point_events = turning_point_events[:5]  # 최대 5개만 표시
     
-    # 히트맵 영역 (왼쪽)
+    # 그래프 생성 - GridSpec으로 레이아웃 구성 (70:30), 높이 증가 (모든 카드가 들어오도록)
+    fig = plt.figure(figsize=(18, 13))
+    fig.patch.set_facecolor('#f5f5f5')
+    gs = gridspec.GridSpec(1, 2, width_ratios=[7, 3], hspace=0.1, wspace=0.08)
+    
+    # 히트맵 영역 (왼쪽 70%)
     ax = fig.add_subplot(gs[0])
     ax.set_facecolor('#22312b')  # 축구장 초록색 배경
     
-    # 선수 정보 표 영역 (오른쪽)
-    ax_table = fig.add_subplot(gs[1])
-    ax_table.set_facecolor('#2d3a35')
-    ax_table.axis('off')
+    # 통계/설명 영역 (오른쪽 30%)
+    ax_side = fig.add_subplot(gs[1])
+    ax_side.set_facecolor('#ffffff')
+    ax_side.axis('off')
     
-    # 축구장 필드 그리기
-    # 외곽선
-    field_rect = mpatches.Rectangle((0, 0), 100, 100, linewidth=3, 
+    # 축구장 필드 그리기 (단순화)
+    field_rect = mpatches.Rectangle((0, 0), 100, 100, linewidth=2, 
                                    edgecolor='white', facecolor='#22312b', zorder=0)
     ax.add_patch(field_rect)
-    
-    # 중앙선
-    ax.plot([50, 50], [0, 100], 'w-', linewidth=2, alpha=0.8, zorder=1)
-    # 중앙 서클
+    ax.plot([50, 50], [0, 100], 'w-', linewidth=1.5, alpha=0.6, zorder=1)
     center_circle = plt.Circle((50, 50), 10, fill=False, edgecolor='white', 
-                              linewidth=2, alpha=0.8, zorder=1)
+                              linewidth=1.5, alpha=0.6, zorder=1)
     ax.add_patch(center_circle)
-    
-    # 페널티 박스 (왼쪽)
     penalty_left = mpatches.Rectangle((0, 20), 20, 60, fill=False, 
-                                     edgecolor='white', linewidth=2, alpha=0.8, zorder=1)
+                                     edgecolor='white', linewidth=1.5, alpha=0.6, zorder=1)
     ax.add_patch(penalty_left)
-    # 골 에어리어 (왼쪽)
-    goal_area_left = mpatches.Rectangle((0, 35), 8, 30, fill=False, 
-                                       edgecolor='white', linewidth=2, alpha=0.8, zorder=1)
-    ax.add_patch(goal_area_left)
-    
-    # 페널티 박스 (오른쪽)
     penalty_right = mpatches.Rectangle((80, 20), 20, 60, fill=False, 
-                                      edgecolor='white', linewidth=2, alpha=0.8, zorder=1)
+                                      edgecolor='white', linewidth=1.5, alpha=0.6, zorder=1)
     ax.add_patch(penalty_right)
-    # 골 에어리어 (오른쪽)
-    goal_area_right = mpatches.Rectangle((92, 35), 8, 30, fill=False, 
-                                        edgecolor='white', linewidth=2, alpha=0.8, zorder=1)
-    ax.add_patch(goal_area_right)
     
-    # 모든 선수의 위치 데이터 수집 (전체 히트맵용)
-    all_x = []
-    all_y = []
+    # 전체 히트맵 생성 (단색 그라디언트: 연한 노랑 → 진한 빨강)
+    all_x, all_y = [], []
     for player_name, activity in player_activities.items():
         for x, y in activity.positions:
             if 0 <= x <= 100 and 0 <= y <= 100:
                 all_x.append(x)
                 all_y.append(y)
     
-    # 전체 히트맵 생성 (배경용, 약하게)
     if all_x and all_y:
-        # 2D 히스토그램으로 히트맵 생성
-        heatmap, xedges, yedges = np.histogram2d(all_x, all_y, bins=25, range=[[0, 100], [0, 100]])
+        heatmap, xedges, yedges = np.histogram2d(all_x, all_y, bins=20, range=[[0, 100], [0, 100]])
         extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
+        # 단색 그라디언트: YlOrRd (연한 노랑 → 진한 빨강)
         im = ax.imshow(heatmap.T, origin='lower', extent=extent, cmap='YlOrRd', 
-                      alpha=0.3, interpolation='gaussian', zorder=2)
-        
-        # 색상바
-        cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-        cbar.set_label('전체 활동 빈도', fontsize=11, color='white')
-        cbar.ax.tick_params(colors='white')
+                      alpha=0.25, interpolation='gaussian', zorder=2)
+        cbar = plt.colorbar(im, ax=ax, fraction=0.03, pad=0.02)
+        cbar.set_label('활동량/위험도', fontsize=9, color='white')
+        cbar.ax.tick_params(colors='white', labelsize=8)
     
-    # 공격 라인 및 수비 라인 계산
+    # 공격/수비 라인 계산 및 표시 (단순화)
     attack_events = [e for e in window_events if e.event_type in ['shot', 'pass'] and e.x is not None]
     defense_events = [e for e in window_events if e.event_type == 'defense' and e.x is not None]
-    
     attack_line_x = np.mean([e.x for e in attack_events]) if attack_events else None
     defense_line_x = np.mean([e.x for e in defense_events]) if defense_events else None
     
-    # 공격 라인 표시
+    # 공격 라인 (차가운색: 파랑) - 한쪽만 텍스트 표시
     if attack_line_x:
-        ax.plot([attack_line_x, attack_line_x], [0, 100], color='green', 
-               linestyle='-', linewidth=4, alpha=0.8, zorder=3)
-        ax.text(attack_line_x, 5, f'공격 라인\n{attack_line_x:.1f}', 
-                ha='center', va='bottom', fontsize=10, color='green', weight='bold',
-                bbox=dict(boxstyle='round,pad=0.4', facecolor='white', alpha=0.95, 
-                         edgecolor='green', linewidth=2), zorder=10)
+        ax.plot([attack_line_x, attack_line_x], [0, 100], color='#4A90E2', 
+               linestyle='-', linewidth=2.5, alpha=0.7, zorder=3)
+        ax.text(attack_line_x, 3, '공격 라인↑', ha='center', va='bottom', 
+                fontsize=8, color='#4A90E2', weight='bold', zorder=10)
     
-    # 수비 라인 표시
+    # 수비 라인 (차가운색: 청록) - 텍스트 제거, 전체 설명에 포함
     if defense_line_x:
-        ax.plot([defense_line_x, defense_line_x], [0, 100], color='red', 
-               linestyle='-', linewidth=4, alpha=0.8, zorder=3)
-        ax.text(defense_line_x, 95, f'수비 라인\n{defense_line_x:.1f}', 
-                ha='center', va='top', fontsize=10, color='red', weight='bold',
-                bbox=dict(boxstyle='round,pad=0.4', facecolor='white', alpha=0.95, 
-                         edgecolor='red', linewidth=2), zorder=10)
+        ax.plot([defense_line_x, defense_line_x], [0, 100], color='#50C878', 
+               linestyle='-', linewidth=2.5, alpha=0.7, zorder=3)
     
-    # 패스 네트워크 분석
-    from src.analysis.player_analysis import analyze_pass_network, get_player_average_positions
-    pass_connections, top_pass_paths = analyze_pass_network(
-        match_data, turning_point, player_activities, time_window
-    )
-    player_positions = get_player_average_positions(player_activities)
-    
-    # 패스 연결선 그리기
+    # 패스 표시 (단순화된 색상)
     passes = [e for e in window_events if e.event_type == 'pass' and e.x is not None and e.y is not None]
     successful_passes = [p for p in passes if p.success is True]
     failed_passes = [p for p in passes if p.success is False]
     
-    # 주요 패스 경로 (상위 5개) - 두꺼운 선으로 표시
-    if top_pass_paths and player_positions:
-        for passer, receiver, count in top_pass_paths[:5]:
-            if passer in player_positions and receiver in player_positions:
-                passer_pos = player_positions[passer]
-                receiver_pos = player_positions[receiver]
-                
-                # 패스 빈도에 따라 선 두께 조정
-                line_width = min(5 + count * 0.5, 8)
-                alpha = min(0.9, 0.5 + count * 0.1)
-                
-                # 주요 패스 경로는 노란색으로 표시
-                ax.plot([passer_pos[0], receiver_pos[0]], [passer_pos[1], receiver_pos[1]],
-                       color='yellow', linewidth=line_width, alpha=alpha, zorder=5,
-                       linestyle='-', label='주요 패스 경로' if (passer, receiver) == top_pass_paths[0][:2] else '')
-                
-                # 화살표 추가
-                dx = receiver_pos[0] - passer_pos[0]
-                dy = receiver_pos[1] - passer_pos[1]
-                length = np.sqrt(dx**2 + dy**2)
-                if length > 0:
-                    ax.arrow(passer_pos[0] + dx * 0.7, passer_pos[1] + dy * 0.7,
-                            dx * 0.2, dy * 0.2,
-                            head_width=2, head_length=2, fc='yellow', ec='yellow',
-                            alpha=alpha, zorder=5, linewidth=line_width * 0.8)
-                
-                # 패스 횟수 표시
-                mid_x = (passer_pos[0] + receiver_pos[0]) / 2
-                mid_y = (passer_pos[1] + receiver_pos[1]) / 2
-                ax.text(mid_x, mid_y, str(count), ha='center', va='center',
-                       fontsize=8, color='white', weight='bold',
-                       bbox=dict(boxstyle='round,pad=0.2', facecolor='yellow', 
-                               alpha=0.8, edgecolor='black', linewidth=1), zorder=12)
-    
-    # 일반 성공한 패스 (주요 경로가 아닌 것들)
-    for pass_event in successful_passes[:25]:
-        if pass_event.metadata and 'end_x' in pass_event.metadata and 'end_y' in pass_event.metadata:
-            end_x = pass_event.metadata.get('end_x')
-            end_y = pass_event.metadata.get('end_y')
-            passer = pass_event.metadata.get('player_name', '')
-            receiver = pass_event.metadata.get('receiver_name', '')
-            
-            # 주요 패스 경로가 아닌 경우만 표시
-            if end_x is not None and end_y is not None:
-                is_major_path = False
-                if passer and receiver and (passer, receiver) in pass_connections:
-                    if (passer, receiver, pass_connections[(passer, receiver)]) in top_pass_paths[:5]:
-                        is_major_path = True
-                
-                if not is_major_path:
-                    ax.annotate('', xy=(end_x, end_y), xytext=(pass_event.x, pass_event.y),
-                               arrowprops=dict(arrowstyle='->', color='#00CED1', alpha=0.6, 
-                                             lw=1.5, mutation_scale=15))
-                    ax.scatter(pass_event.x, pass_event.y, s=60, c='#00CED1', 
-                              marker='o', edgecolors='white', linewidths=1, alpha=0.7, zorder=6)
-    
-    # 실패한 패스
-    for pass_event in failed_passes[:15]:
+    # 성공한 패스: 얇은 파란 실선 화살표 (투명도 더 낮춤)
+    for i, pass_event in enumerate(successful_passes[:20]):
         if pass_event.metadata and 'end_x' in pass_event.metadata and 'end_y' in pass_event.metadata:
             end_x = pass_event.metadata.get('end_x')
             end_y = pass_event.metadata.get('end_y')
             if end_x is not None and end_y is not None:
-                ax.plot([pass_event.x, end_x], [pass_event.y, end_y], 
-                       color='#FF8C00', linestyle='--', linewidth=1.5, alpha=0.5, zorder=4)
-                ax.scatter(pass_event.x, pass_event.y, s=80, c='#FF8C00', 
-                          marker='x', linewidths=2, alpha=0.7, zorder=5)
+                # 앞쪽 10개는 조금 더 진하게, 나머지는 더 투명하게
+                alpha = 0.35 if i < 10 else 0.2
+                ax.annotate('', xy=(end_x, end_y), xytext=(pass_event.x, pass_event.y),
+                           arrowprops=dict(arrowstyle='->', color='#4A90E2', alpha=alpha, 
+                                         lw=0.7, mutation_scale=8), zorder=4)
     
-    # 슈팅 표시
+    # 실패한 패스: 얇은 회색 실선 화살표 (투명도 더 낮춤)
+    for pass_event in failed_passes[:10]:
+        if pass_event.metadata and 'end_x' in pass_event.metadata and 'end_y' in pass_event.metadata:
+            end_x = pass_event.metadata.get('end_x')
+            end_y = pass_event.metadata.get('end_y')
+            if end_x is not None and end_y is not None:
+                ax.annotate('', xy=(end_x, end_y), xytext=(pass_event.x, pass_event.y),
+                           arrowprops=dict(arrowstyle='->', color='#808080', alpha=0.25, 
+                                         lw=0.7, mutation_scale=8), zorder=3)
+    
+    # 슈팅 표시 (따뜻한색: 주황/노랑, xG에 따라 굵기/크기 조정)
+    # 전후반 및 홈/원정팀에 따라 슈팅 방향 결정
     shots = [e for e in window_events if e.event_type == 'shot' and e.x is not None and e.y is not None]
     for shot_event in shots:
-        goal_x = 100
+        # 전반/후반 판단 (minute 기준)
+        is_first_half = shot_event.minute < 45
+        is_home_team = shot_event.team == match_data.home_team
+        
+        # 슈팅 방향 결정 (데이터는 항상 왼쪽→오른쪽으로 통일되어 있음)
+        # 전반: 홈팀은 오른쪽(x=100), 원정팀은 왼쪽(x=0)
+        # 후반: 홈팀은 왼쪽(x=0), 원정팀은 오른쪽(x=100)
+        if is_first_half:
+            goal_x = 100 if is_home_team else 0
+        else:
+            goal_x = 0 if is_home_team else 100
         goal_y = 50
         
+        # xG에 따라 색상과 크기 결정 (따뜻한색 계열)
         if shot_event.xg:
             if shot_event.xg >= 0.3:
-                color = '#DC143C'
-                size = 600
+                color = '#FF6B35'  # 진한 주황
+                line_width = 2.5
+                circle_size = 120
             elif shot_event.xg >= 0.15:
-                color = '#FF6347'
-                size = 400
+                color = '#FFA500'  # 주황
+                line_width = 2.0
+                circle_size = 90
             else:
-                color = '#FFD700'
-                size = 300
+                color = '#FFD700'  # 노랑
+                line_width = 1.5
+                circle_size = 70
         else:
-            color = '#FF6347'
-            size = 400
+            color = '#FFA500'
+            line_width = 2.0
+            circle_size = 90
         
-        ax.scatter(shot_event.x, shot_event.y, s=size, c=color, marker='*', 
-                  edgecolors='black', linewidths=2.5, alpha=0.9, zorder=8)
+        # 슈팅 위치: 작은 원 또는 별 아이콘
+        ax.scatter(shot_event.x, shot_event.y, s=circle_size, c=color, marker='o', 
+                  edgecolors='white', linewidths=2, alpha=0.9, zorder=8)
         
-        # 슈팅 방향 화살표
+        # 슈팅 방향: 두께 한 단계 줄임
         dx = goal_x - shot_event.x
         dy = goal_y - shot_event.y
         if np.sqrt(dx**2 + dy**2) > 2:
-            ax.arrow(shot_event.x, shot_event.y, dx * 0.3, dy * 0.3,
-                    head_width=3, head_length=3, fc=color, ec='black', 
-                    alpha=0.8, zorder=7, linewidth=2.5)
-        
-        # xG 표시는 작게 (필드 가림 최소화)
-        if shot_event.xg:
-            ax.text(shot_event.x, shot_event.y - 4, f'{shot_event.xg:.2f}',
-                   ha='center', va='top', fontsize=7, color='white', weight='bold',
-                   bbox=dict(boxstyle='round,pad=0.2', facecolor=color, alpha=0.9, 
-                           edgecolor='black', linewidth=1), zorder=10)
+            ax.arrow(shot_event.x, shot_event.y, dx * 0.25, dy * 0.25,
+                    head_width=2.0, head_length=2.0, fc=color, ec='white', 
+                    alpha=0.7, zorder=7, linewidth=line_width)
     
-    # 주요 선수 위치 및 활동 영역 표시 (개별 히트맵)
+    # 주요 선수 위치 표시 (작은 원 + 번호, 주요 선수만 강조)
     from src.analysis.player_analysis import get_key_players
     key_players = get_key_players(player_activities, top_n=5)
     
-    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
+    # 색상 팔레트 단순화 (차가운색 계열)
+    player_colors = ['#4A90E2', '#50C878', '#5B9BD5', '#6BB6FF', '#7EC8E3']
     player_data_for_table = []
     
     for idx, (player_name, activity, impact_score) in enumerate(key_players):
@@ -431,44 +406,45 @@ def plot_player_heatmap_basic(
             avg_x = np.mean(positions[:, 0])
             avg_y = np.mean(positions[:, 1])
             
-            color = colors[idx % len(colors)]
+            color = player_colors[idx % len(player_colors)]
             
-            # 각 선수별 개별 히트맵 생성
+            # 선수별 히트맵 (보조 정보, 약하게)
             player_x = positions[:, 0]
             player_y = positions[:, 1]
-            
-            # 유효한 위치만 필터링
             valid_mask = (player_x >= 0) & (player_x <= 100) & (player_y >= 0) & (player_y <= 100)
             player_x_valid = player_x[valid_mask]
             player_y_valid = player_y[valid_mask]
             
             if len(player_x_valid) > 0:
-                # 선수별 히트맵 데이터 생성
                 player_heatmap, xedges, yedges = np.histogram2d(
                     player_x_valid, player_y_valid, 
-                    bins=20, range=[[0, 100], [0, 100]]
+                    bins=15, range=[[0, 100], [0, 100]]
                 )
-                
-                # 히트맵 표시 (선수별 색상으로)
-                # 색상 맵을 선수 색상에 맞게 조정
                 from matplotlib.colors import LinearSegmentedColormap
-                cmap_colors = ['#00000000', color]  # 투명 -> 선수 색상
+                cmap_colors = ['#00000000', color]
                 player_cmap = LinearSegmentedColormap.from_list(f'player_{idx}', cmap_colors, N=256)
-                
                 extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
                 ax.imshow(player_heatmap.T, origin='lower', extent=extent, 
-                         cmap=player_cmap, alpha=0.6, interpolation='gaussian', zorder=4)
+                         cmap=player_cmap, alpha=0.3, interpolation='gaussian', zorder=4)
             
-            # 선수 위치 마커 (숫자로 표시)
-            size = 300 + (impact_score * 5)
-            ax.scatter(avg_x, avg_y, s=size, c=color, edgecolors='white', 
-                      linewidths=3, alpha=0.95, zorder=9, marker='o')
+            # 선수 위치 마커: 작은 원 + 번호 (주요 선수는 강조)
+            is_key_player = idx < 3  # 상위 3명만 주요 선수로 간주
+            if is_key_player:
+                # 주요 선수: 굵은 테두리 + halo 효과
+                halo_circle = plt.Circle((avg_x, avg_y), 4, fill=True, 
+                                        color=color, alpha=0.2, zorder=8)
+                ax.add_patch(halo_circle)
+                marker_size = 180
+                edge_width = 3
+            else:
+                marker_size = 120
+                edge_width = 2
             
-            # 선수 번호 표시 (필드 위에는 번호만)
+            ax.scatter(avg_x, avg_y, s=marker_size, c=color, edgecolors='white', 
+                      linewidths=edge_width, alpha=0.95, zorder=9, marker='o')
             ax.text(avg_x, avg_y, str(idx + 1), ha='center', va='center',
-                   fontsize=12, color='white', weight='bold', zorder=10)
+                   fontsize=10 if is_key_player else 8, color='white', weight='bold', zorder=10)
             
-            # 표 데이터 수집
             player_data_for_table.append({
                 'num': idx + 1,
                 'name': player_name,
@@ -477,81 +453,48 @@ def plot_player_heatmap_basic(
                 'defense': activity.defense_actions,
                 'xg': activity.xg_contribution,
                 'impact': impact_score,
-                'color': color
+                'color': color,
+                'is_key': is_key_player
             })
     
-    # 범례 (히트맵 영역)
-    legend_elements = [
-        mpatches.Patch(color='green', alpha=0.8, label='공격 라인'),
-        mpatches.Patch(color='red', alpha=0.8, label='수비 라인'),
-        plt.Line2D([0], [0], color='yellow', linewidth=5, label='주요 패스 경로 (상위 5개)'),
-        plt.Line2D([0], [0], color='#00CED1', linewidth=2, label='일반 성공한 패스'),
-        plt.Line2D([0], [0], color='#FF8C00', linewidth=2, linestyle='--', label='실패한 패스'),
-        plt.Line2D([0], [0], marker='*', color='w', markerfacecolor='#DC143C', 
-                  markersize=15, markeredgecolor='black', markeredgewidth=2, label='슈팅 (xG 높음)'),
-        plt.Line2D([0], [0], marker='*', color='w', markerfacecolor='#FF6347', 
-                  markersize=12, markeredgecolor='black', markeredgewidth=2, label='슈팅 (xG 중간)'),
-        plt.Line2D([0], [0], marker='*', color='w', markerfacecolor='#FFD700', 
-                  markersize=10, markeredgecolor='black', markeredgewidth=2, label='슈팅 (xG 낮음)'),
-    ]
-    ax.legend(handles=legend_elements, loc='upper left', fontsize=9, framealpha=0.95, 
-             edgecolor='black', fancybox=True, shadow=True, facecolor='white')
+    # 변곡점 이벤트 번호 표시 (①, ②, ③...)
+    turning_point_numbers = ['①', '②', '③', '④', '⑤']
+    turning_point_explanations = []
+    event_icons = {'shot': '⚽', 'pass': '→', 'defense': '🛡️'}  # 미니 아이콘
     
-    # 선수 정보 표 생성 (오른쪽 사이드)
-    if player_data_for_table:
-        # 표 데이터 준비
-        table_data = [['번호', '선수명', '슈팅', '패스', '수비', 'xG', '영향도']]
-        
-        for player in player_data_for_table:
-            table_data.append([
-                str(player['num']),
-                player['name'][:10] + ('...' if len(player['name']) > 10 else ''),
-                str(player['shots']),
-                str(player['passes']),
-                str(player['defense']),
-                f"{player['xg']:.2f}",
-                f"{player['impact']:.1f}"
-            ])
-        
-        # 표 생성
-        table = ax_table.table(cellText=table_data[1:], colLabels=table_data[0],
-                              cellLoc='center', loc='center',
-                              colWidths=[0.08, 0.25, 0.12, 0.12, 0.12, 0.15, 0.15])
-        
-        # 표 스타일링
-        table.auto_set_font_size(False)
-        table.set_fontsize(9)
-        table.scale(1, 2.5)
-        
-        # 헤더 스타일
-        for i in range(len(table_data[0])):
-            table[(0, i)].set_facecolor('#1a1a1a')
-            table[(0, i)].set_text_props(weight='bold', color='white')
-            table[(0, i)].set_edgecolor('white')
-            table[(0, i)].set_linewidth(1.5)
-        
-        # 데이터 행 스타일 (색상별)
-        for row_idx, player in enumerate(player_data_for_table, start=1):
-            for col_idx in range(len(table_data[0])):
-                cell = table[(row_idx, col_idx)]
-                cell.set_facecolor(player['color'])
-                cell.set_alpha(0.7)
-                cell.set_text_props(weight='bold', color='white')
-                cell.set_edgecolor('white')
-                cell.set_linewidth(1)
-        
-        # 표 제목
-        ax_table.text(0.5, 0.95, '주요 선수 통계', ha='center', va='top',
-                     fontsize=14, fontweight='bold', color='white',
-                     transform=ax_table.transAxes)
-        
-        # 범례 설명 (표 아래)
-        legend_text = "※ 필드 위 숫자는 선수 번호를 나타냅니다"
-        ax_table.text(0.5, 0.02, legend_text, ha='center', va='bottom',
-                     fontsize=8, color='#cccccc', style='italic',
-                     transform=ax_table.transAxes)
+    for idx, event in enumerate(turning_point_events[:5]):
+        if event.x is not None and event.y is not None:
+            # 변곡점 번호 마커 (강조색: 선홍 또는 보라)
+            marker_color = '#FF1493'  # 선홍색
+            ax.scatter(event.x, event.y, s=400, c=marker_color, marker='*', 
+                      edgecolors='white', linewidths=2.5, alpha=0.95, zorder=11)
+            ax.text(event.x, event.y, turning_point_numbers[idx], ha='center', va='center',
+                   fontsize=16, color='white', weight='bold', zorder=12)
+            
+            # 설명 텍스트 생성 (미니 아이콘 포함)
+            event_type_kr = {'shot': '슈팅', 'pass': '패스', 'defense': '수비'}[event.event_type]
+            icon = event_icons.get(event.event_type, '•')
+            player_name = event.metadata.get('player_name', '') if event.metadata else ''
+            if player_name:
+                explanation = f"{turning_point_numbers[idx]} {icon} {player_name}의 {event_type_kr}"
+                if event.event_type == 'shot' and event.xg:
+                    explanation += f" (xG: {event.xg:.2f})"
+            else:
+                explanation = f"{turning_point_numbers[idx]} {icon} {event_type_kr} 이벤트"
+            turning_point_explanations.append({
+                'text': explanation,
+                'event_type': event.event_type
+            })
     
-    # 제목
+    # 우측 영역 구성: 통일된 레이아웃 (범례, 표, 변곡점 설명, 전체 설명)
+    # 통일된 카드 설정
+    card_left = 0.05  # 좌측 정렬 기준선
+    card_width = 0.9  # 가로 폭
+    card_margin = 0.02  # 카드 간 세로 간격 (약 16-24px)
+    
+    y_pos = 0.96  # 상단 여백 조정
+    
+    # 제목 (상단, 여백 줄임, 카드와 정렬)
     situation_text = ""
     if turning_point.change_type == 'attack_surge':
         situation_text = "공격 급증"
@@ -560,24 +503,343 @@ def plot_player_heatmap_basic(
     else:
         situation_text = "모멘텀 변화"
     
-    fig.suptitle(
-        f'{target_team} - {turning_point.minute}분 변곡점 ({situation_text})\n'
-        f'주요 선수 활동 히트맵 및 패스/슈팅 분석',
-        fontsize=16,
-        fontweight='bold',
-        y=0.98,
-        color='white'
-    )
+    ax_side.text(card_left, y_pos, f'{target_team}', ha='left', va='top',
+                fontsize=13, fontweight='bold', color='#333333', transform=ax_side.transAxes)
+    y_pos -= 0.035
+    ax_side.text(card_left, y_pos, f'{turning_point.minute}분 변곡점 ({situation_text})', 
+                ha='left', va='top', fontsize=11, fontweight='bold', color='#666666',
+                transform=ax_side.transAxes)
+    y_pos -= 0.04
     
+    # ① 범례 박스 (통일된 폭과 정렬, 여백 최소화)
+    legend_items = [
+        ('★', '변곡점 이벤트(슈팅/결정적 패스)'),
+        ('●', '파란 원: 분석 대상 수비수'),
+        ('●', '연두색 원: 분석 대상 공격수'),
+        ('→', '파란 실선 화살표: 성공 패스'),
+        ('→', '회색 점선 화살표: 비중 낮은/예상 패스'),
+        ('→', '노란/주황 화살표: 슈팅 방향(xG에 따라 색상)'),
+    ]
+    
+    # 여백 줄임: 높이 계산 (줄 간격과 상하 패딩 감소)
+    legend_box_height = len(legend_items) * 0.020 + 0.05  # 0.025 -> 0.020, 0.08 -> 0.05
+    legend_box = mpatches.FancyBboxPatch(
+        (card_left, y_pos - legend_box_height), card_width, legend_box_height,
+        boxstyle='round,pad=0.01', edgecolor='#cccccc', facecolor='white',  # pad 0.02 -> 0.01
+        alpha=0.85, linewidth=1, transform=ax_side.transAxes, zorder=1
+    )
+    ax_side.add_patch(legend_box)
+    
+    # 범례 제목 (왼쪽 정렬, 여백 줄임)
+    ax_side.text(card_left + 0.02, y_pos - 0.005, '범례', ha='left', va='top',  # 0.01 -> 0.005
+                fontsize=9, fontweight='bold', color='#333333', transform=ax_side.transAxes)
+    
+    # 범례 항목들 (줄 간격 줄임)
+    for idx, (symbol, text) in enumerate(legend_items):
+        # 심볼 색상 설정
+        if '파란 원' in text:
+            symbol_color = '#4A90E2'
+        elif '연두색 원' in text:
+            symbol_color = '#50C878'
+        elif '파란 실선' in text:
+            symbol_color = '#4A90E2'
+        elif '회색 점선' in text:
+            symbol_color = '#808080'
+        elif '노란/주황' in text or '슈팅' in text:
+            symbol_color = '#FFD700'  # 노란색
+        else:
+            symbol_color = '#FF1493'
+        
+        y_item = y_pos - 0.025 - idx * 0.020  # 0.04 -> 0.025, 0.025 -> 0.020
+        ax_side.text(card_left + 0.05, y_item, symbol, ha='left', va='top',
+                    fontsize=8, color=symbol_color, weight='bold', transform=ax_side.transAxes)
+        ax_side.text(card_left + 0.13, y_item, text, ha='left', va='top',
+                    fontsize=7, color='#555555', transform=ax_side.transAxes)
+    
+    y_pos -= legend_box_height + card_margin
+    
+    # ② 선수 통계 표 (통일된 폭과 정렬)
+    if player_data_for_table:
+        table_data = [['번호', '선수명', '슈팅', '패스', '수비', 'xG', '영향도']]
+        for player in player_data_for_table:
+            table_data.append([
+                str(player['num']),
+                player['name'][:8] + ('...' if len(player['name']) > 8 else ''),
+                str(player['shots']),
+                str(player['passes']),
+                str(player['defense']),
+                f"{player['xg']:.2f}",
+                f"{player['impact']:.1f}"
+            ])
+        
+        table_height = 0.28  # 높이 약간 조정
+        # table의 bbox는 정확히 card_left와 card_width를 사용하여 정렬
+        table = ax_side.table(cellText=table_data[1:], colLabels=table_data[0],
+                            cellLoc='center', loc='center',
+                            colWidths=[0.08, 0.22, 0.10, 0.10, 0.10, 0.15, 0.15],
+                            bbox=[card_left, y_pos - table_height, card_width, table_height])
+        
+        table.auto_set_font_size(False)
+        table.set_fontsize(7.5)
+        table.scale(1, 2.0)
+        
+        # 헤더 스타일 (채도 낮춤)
+        for i in range(len(table_data[0])):
+            table[(0, i)].set_facecolor('#e0e0e0')
+            table[(0, i)].set_text_props(weight='bold', color='#333333')
+            table[(0, i)].set_edgecolor('#cccccc')
+            table[(0, i)].set_linewidth(1)
+        
+        # 데이터 행 스타일 (채도 낮춤, 주요 수치만 굵게)
+        for row_idx, player in enumerate(player_data_for_table, start=1):
+            for col_idx in range(len(table_data[0])):
+                cell = table[(row_idx, col_idx)]
+                # 색상 채도 낮춤 (pastel 톤)
+                from matplotlib.colors import to_rgb
+                rgb = to_rgb(player['color'])
+                pastel_color = tuple(0.7 * c + 0.3 for c in rgb)  # 밝게
+                cell.set_facecolor(pastel_color)
+                cell.set_alpha(0.6)
+                cell.set_edgecolor('#dddddd')
+                cell.set_linewidth(0.5)
+                
+                # 영향도 1위, 슈팅 수 상위는 굵게
+                is_important = (col_idx == 6 and player['impact'] == max(p['impact'] for p in player_data_for_table)) or \
+                              (col_idx == 2 and player['shots'] == max(p['shots'] for p in player_data_for_table))
+                cell.set_text_props(weight='bold' if is_important else 'normal', 
+                                  color='#333333', size=8)
+        
+        y_pos -= table_height + card_margin
+    
+    # ③ 변곡점 설명 카드 (통일된 폭과 정렬, 가장 중요한 텍스트 카드, 여백 최소화)
+    if turning_point_explanations:
+        # 제목 (왼쪽 정렬, 진한 색, 굵게, 카드와 정렬)
+        ax_side.text(card_left + 0.02, y_pos, '변곡점 설명', ha='left', va='top',
+                    fontsize=11, fontweight='bold', color='#222222', transform=ax_side.transAxes)
+        y_pos -= 0.02  # 여백 더 줄임
+        
+        # 카드 높이 계산 (여백 최소화 - 더 줄임)
+        line_spacing = 0.025  # 줄 간격 더 줄임 (0.030 -> 0.025)
+        padding = 0.04  # 상하 패딩 더 줄임 (0.06 -> 0.04)
+        explanation_box_height = len(turning_point_explanations) * line_spacing + padding
+        explanation_box = mpatches.FancyBboxPatch(
+            (card_left, y_pos - explanation_box_height), card_width, explanation_box_height,
+            boxstyle='round,pad=0.005', edgecolor='#CC0066', facecolor='#fff5f5',  # pad 더 줄임
+            linewidth=2.5, transform=ax_side.transAxes, zorder=1  # 더 두꺼운 테두리
+        )
+        ax_side.add_patch(explanation_box)
+        
+        # 각 번호 설명을 한 줄로 요약
+        for idx, explanation_data in enumerate(turning_point_explanations):
+            if idx >= len(turning_point_events):
+                break
+                
+            event = turning_point_events[idx]
+            event_type = explanation_data.get('event_type', event.event_type) if isinstance(explanation_data, dict) else event.event_type
+            player_name = event.metadata.get('player_name', '') if event.metadata else ''
+            
+            # 핵심 정보만 추출하여 한 줄 요약 (예: "① 김진규 전진 패스로 슈팅 유도(xG 0.15)")
+            event_type_kr = {'shot': '슈팅', 'pass': '패스', 'defense': '수비'}.get(event_type, '이벤트')
+            
+            if player_name:
+                if event_type == 'shot' and event.xg:
+                    summary = f"{player_name} {event_type_kr} (xG {event.xg:.2f})"
+                elif event_type == 'pass':
+                    summary = f"{player_name} {event_type_kr}"
+                else:
+                    summary = f"{player_name} {event_type_kr}"
+            else:
+                summary = f"{event_type_kr} 이벤트"
+            
+            # 번호와 함께 표시 (줄 간격 더 줄임)
+            final_text = f"{turning_point_numbers[idx]} {summary}"
+            ax_side.text(card_left + 0.04, y_pos - 0.02 - idx * line_spacing, final_text, ha='left', va='top',
+                       fontsize=8, color='#333333', transform=ax_side.transAxes)
+        
+        y_pos -= explanation_box_height + card_margin
+    
+    # ④ 전체 설명 카드 (통일된 폭과 정렬, 변곡점 설명보다 낮은 위계, 독립적으로 배치)
+    if turning_point.explanation:
+        # 제목 (왼쪽 정렬, 연한 색, 작은 폰트, 카드와 정렬)
+        ax_side.text(card_left + 0.02, y_pos, '전체 설명', ha='left', va='top',
+                    fontsize=9, fontweight='bold', color='#666666', transform=ax_side.transAxes)
+        y_pos -= 0.02  # 여백 더 줄임 (0.025 -> 0.02)
+        
+        # 수비/공격 라인 정보와 설명을 통합 (생략 없이 모두 출력)
+        explanation_lines = []
+        
+        # 공격/수비 라인 정보와 설명을 한 문장으로 통합
+        if attack_line_x and defense_line_x:
+            # 라인 변화 방향 판단
+            if attack_line_x > 50:
+                line_text = f"공격 라인 {attack_line_x:.0f}, 수비 라인 {defense_line_x:.0f}으로 전진하며"
+            else:
+                line_text = f"공격 라인 {attack_line_x:.0f}, 수비 라인 {defense_line_x:.0f}으로 후퇴하며"
+            
+            # 기존 설명 텍스트 요약과 통합 (생략 없이)
+            explanation_text = turning_point.explanation
+            sentences = explanation_text.replace('。', '。\n').replace('. ', '.\n').split('\n')
+            summary_text = ""
+            for line in sentences[:1]:
+                if line.strip():
+                    summary_text = line.strip()
+                    break
+            
+            if summary_text:
+                combined_text = f"{line_text} {target_team}의 {summary_text}"
+            else:
+                combined_text = f"{line_text} {target_team}의 경기 흐름 변화"
+            
+            explanation_lines.append(combined_text)
+        elif attack_line_x:
+            explanation_lines.append(f"공격 라인 {attack_line_x:.0f}으로 전진")
+        elif defense_line_x:
+            explanation_lines.append(f"수비 라인 {defense_line_x:.0f}으로 후퇴")
+        
+        # 라인 정보가 없으면 설명만 (생략 없이)
+        if not explanation_lines:
+            explanation_text = turning_point.explanation
+            sentences = explanation_text.replace('。', '。\n').replace('. ', '.\n').split('\n')
+            for line in sentences[:1]:
+                if line.strip():
+                    explanation_lines.append(line.strip())
+                    break
+        
+        # 텍스트 줄바꿈 처리 및 실제 표시될 줄 수 계산 (줄바꿈 기준 완화)
+        line_height = 0.045  # 줄 간격
+        padding = 0.03  # 상하 패딩 (0.05 -> 0.03, 여백 줄임)
+        max_chars_per_line = 35  # 한 줄당 최대 문자 수 증가 (28 -> 35, 줄바꿈 덜 일찍)
+        
+        # 모든 텍스트를 줄바꿈 처리하여 실제 표시될 줄 리스트 생성 (생략 없이)
+        display_lines = []
+        for line in explanation_lines:
+            if len(line) <= max_chars_per_line:
+                display_lines.append(line)
+            else:
+                # 긴 텍스트를 여러 줄로 분할 (생략 없이)
+                words = line.split()
+                current_line = ""
+                for word in words:
+                    test_line = current_line + (" " if current_line else "") + word
+                    if len(test_line) <= max_chars_per_line:
+                        current_line = test_line
+                    else:
+                        if current_line:
+                            display_lines.append(current_line)
+                        current_line = word
+                        # 단어 자체가 너무 길어도 생략하지 않고 그대로 표시
+                        if len(current_line) > max_chars_per_line:
+                            display_lines.append(current_line)  # 생략 없이
+                            current_line = ""
+                if current_line:
+                    display_lines.append(current_line)
+        
+        # 줄 수 제한 없음 (모든 내용 표시)
+        
+        # 카드 높이 계산 (실제 표시될 줄 수 기준)
+        total_explanation_height = len(display_lines) * line_height + padding
+        
+        # 박스 생성 (패딩 줄임)
+        explanation_box = mpatches.FancyBboxPatch(
+            (card_left, y_pos - total_explanation_height), card_width, total_explanation_height,
+            boxstyle='round,pad=0.01', edgecolor='#FFB6C1', facecolor='#f9f9f9',  # pad 0.02 -> 0.01
+            linewidth=1.5, transform=ax_side.transAxes, zorder=1  # 얇은 테두리
+        )
+        ax_side.add_patch(explanation_box)
+        
+        # 내용 표시 (텍스트가 박스 안에 들어가도록 좌우 여백 확보, 생략 없이)
+        text_left_margin = card_left + 0.04  # 좌측 여백
+        
+        for idx, line in enumerate(display_lines):
+            # 생략 없이 모두 표시 (위 여백 줄임)
+            ax_side.text(text_left_margin, y_pos - 0.02 - idx * line_height, line, 
+                       ha='left', va='top', fontsize=7.5, color='#666666', 
+                       transform=ax_side.transAxes)
+        
+        y_pos -= total_explanation_height
+    
+    # 하단 여백 확인 및 조정 (모든 카드가 화면에 들어오도록)
+    # y_pos가 0보다 작으면 상단 여백을 더 줄이거나 캔버스 높이를 늘려야 함
+    if y_pos < 0.01:
+        # 경고: 카드가 화면을 벗어날 수 있음
+        pass
+    
+    # 필드 설정
     ax.set_xlim(0, 100)
     ax.set_ylim(0, 100)
     ax.set_aspect('equal')
-    ax.axis('off')  # 축 숨기기
     
-    plt.tight_layout()
+    # 골대에 팀 이름 표시 (전반/후반에 따라)
+    is_first_half = turning_point.minute < 45
+    home_team = match_data.home_team
+    away_team = match_data.away_team
+    
+    # 전반: 왼쪽(x=0) = 홈팀, 오른쪽(x=100) = 원정팀
+    # 후반: 왼쪽(x=0) = 원정팀, 오른쪽(x=100) = 홈팀
+    if is_first_half:
+        left_goal_team = home_team
+        right_goal_team = away_team
+    else:
+        left_goal_team = away_team
+        right_goal_team = home_team
+    
+    # 왼쪽 골대 상단에 팀 이름 표시 (필드 상단)
+    ax.text(0, 99, left_goal_team, ha='left', va='top', 
+           fontsize=10, color='white', weight='bold', alpha=0.9,
+           bbox=dict(boxstyle='round,pad=0.4', facecolor='#333333', alpha=0.7, 
+                    edgecolor='white', linewidth=1.5),
+           zorder=22, transform=ax.transData)
+    
+    # 오른쪽 골대 상단에 팀 이름 표시 (필드 상단)
+    ax.text(100, 99, right_goal_team, ha='right', va='top', 
+           fontsize=10, color='white', weight='bold', alpha=0.9,
+           bbox=dict(boxstyle='round,pad=0.4', facecolor='#333333', alpha=0.7, 
+                    edgecolor='white', linewidth=1.5),
+           zorder=22, transform=ax.transData)
+    
+    # x축 눈금 추가 (0부터 100까지 10단위로, 필드 하단에 표시)
+    tick_interval = 10  # 10단위로 눈금 표시
+    tick_positions = list(range(0, 101, tick_interval))
+    
+    # 필드 하단에 눈금선과 숫자 표시 (기존 레이아웃 유지)
+    tick_y_position = 2  # 필드 하단에서 약간 위에 표시
+    tick_length = 1.5  # 눈금선 길이
+    
+    for tick_x in tick_positions:
+        # 눈금선 그리기
+        ax.plot([tick_x, tick_x], [0, tick_length], 'w-', linewidth=1, alpha=0.6, zorder=20)
+        # 숫자 표시
+        ax.text(tick_x, tick_y_position + 1, str(tick_x), ha='center', va='bottom', 
+               fontsize=7, color='white', alpha=0.8, weight='bold', zorder=21)
+    
+    # y축 눈금 추가 (0부터 100까지 10단위로, 필드 좌측에 표시)
+    tick_x_position = 2  # 필드 좌측에서 약간 오른쪽에 표시
+    
+    for tick_y in tick_positions:
+        # 눈금선 그리기
+        ax.plot([0, tick_length], [tick_y, tick_y], 'w-', linewidth=1, alpha=0.6, zorder=20)
+        # 숫자 표시
+        ax.text(tick_x_position + 1, tick_y, str(tick_y), ha='left', va='center', 
+               fontsize=7, color='white', alpha=0.8, weight='bold', zorder=21)
+    
+    # x, y축 설명 추가 (기존 규격 유지하며 필드 상단에 작게 표시)
+    ax.text(50, 98, 'X축: 필드 너비 (0=왼쪽 골대, 100=오른쪽 골대)', 
+           ha='center', va='top', fontsize=8, color='white', alpha=0.7, 
+           bbox=dict(boxstyle='round,pad=0.3', facecolor='black', alpha=0.5, edgecolor='white', linewidth=1),
+           zorder=20, transform=ax.transData)
+    ax.text(50, 95, 'Y축: 필드 높이 (0=하단, 100=상단)', 
+           ha='center', va='top', fontsize=8, color='white', alpha=0.7,
+           bbox=dict(boxstyle='round,pad=0.3', facecolor='black', alpha=0.5, edgecolor='white', linewidth=1),
+           zorder=20, transform=ax.transData)
+    
+    ax.axis('off')
+    
+    # tight_layout 대신 subplots_adjust 사용 (table과 호환성 문제 해결)
+    # 우측 패널이 잘리지 않도록 여백 조정
+    plt.subplots_adjust(left=0.02, right=0.98, top=0.96, bottom=0.02, wspace=0.08)
     
     if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight', pad_inches=0.2, facecolor='#22312b')
+        plt.savefig(save_path, dpi=300, bbox_inches='tight', pad_inches=0.15, facecolor='#f5f5f5')
     else:
         plt.show()
     
