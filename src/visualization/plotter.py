@@ -530,11 +530,11 @@ def plot_player_heatmap_basic(
     )
     ax_side.add_patch(legend_box)
     
-    # 범례 제목 (왼쪽 정렬, 여백 줄임)
+    # 범례 제목 (왼쪽 정렬, 여백 줄임, 폰트 크기 증가)
     ax_side.text(card_left + 0.02, y_pos - 0.005, '범례', ha='left', va='top',  # 0.01 -> 0.005
-                fontsize=9, fontweight='bold', color='#333333', transform=ax_side.transAxes)
+                fontsize=10, fontweight='bold', color='#333333', transform=ax_side.transAxes)
     
-    # 범례 항목들 (줄 간격 줄임)
+    # 범례 항목들 (줄 간격 줄임, 폰트 크기 증가, 핵심 키워드 볼드)
     for idx, (symbol, text) in enumerate(legend_items):
         # 심볼 색상 설정
         if '파란 원' in text:
@@ -552,9 +552,13 @@ def plot_player_heatmap_basic(
         
         y_item = y_pos - 0.025 - idx * 0.020  # 0.04 -> 0.025, 0.025 -> 0.020
         ax_side.text(card_left + 0.05, y_item, symbol, ha='left', va='top',
-                    fontsize=8, color=symbol_color, weight='bold', transform=ax_side.transAxes)
+                    fontsize=9, color=symbol_color, weight='bold', transform=ax_side.transAxes)
+        
+        # 핵심 키워드 볼드 처리 (간단한 방법: 키워드가 포함된 경우 전체를 볼드)
+        has_keyword = any(kw in text for kw in ['변곡점', '성공', '슈팅', 'xG'])
         ax_side.text(card_left + 0.13, y_item, text, ha='left', va='top',
-                    fontsize=7, color='#555555', transform=ax_side.transAxes)
+                    fontsize=8, color='#555555', weight='bold' if has_keyword else 'normal',
+                    transform=ax_side.transAxes)
     
     y_pos -= legend_box_height + card_margin
     
@@ -580,17 +584,17 @@ def plot_player_heatmap_basic(
                             bbox=[card_left, y_pos - table_height, card_width, table_height])
         
         table.auto_set_font_size(False)
-        table.set_fontsize(7.5)
+        table.set_fontsize(8.5)  # 7.5 -> 8.5
         table.scale(1, 2.0)
         
-        # 헤더 스타일 (채도 낮춤)
+        # 헤더 스타일 (채도 낮춤, 폰트 크기 증가)
         for i in range(len(table_data[0])):
             table[(0, i)].set_facecolor('#e0e0e0')
-            table[(0, i)].set_text_props(weight='bold', color='#333333')
+            table[(0, i)].set_text_props(weight='bold', color='#333333', size=9)  # 크기 증가
             table[(0, i)].set_edgecolor('#cccccc')
             table[(0, i)].set_linewidth(1)
         
-        # 데이터 행 스타일 (채도 낮춤, 주요 수치만 굵게)
+        # 데이터 행 스타일 (채도 낮춤, 핵심 수치 볼드, 폰트 크기 증가)
         for row_idx, player in enumerate(player_data_for_table, start=1):
             for col_idx in range(len(table_data[0])):
                 cell = table[(row_idx, col_idx)]
@@ -603,19 +607,21 @@ def plot_player_heatmap_basic(
                 cell.set_edgecolor('#dddddd')
                 cell.set_linewidth(0.5)
                 
-                # 영향도 1위, 슈팅 수 상위는 굵게
-                is_important = (col_idx == 6 and player['impact'] == max(p['impact'] for p in player_data_for_table)) or \
-                              (col_idx == 2 and player['shots'] == max(p['shots'] for p in player_data_for_table))
-                cell.set_text_props(weight='bold' if is_important else 'normal', 
-                                  color='#333333', size=8)
+                # 핵심 수치: 선수명(1), 영향도(6), xG(5), 슈팅(2)는 볼드
+                is_key_metric = col_idx in [1, 5, 6]  # 선수명, xG, 영향도
+                is_top_value = (col_idx == 6 and player['impact'] == max(p['impact'] for p in player_data_for_table)) or \
+                              (col_idx == 2 and player['shots'] == max(p['shots'] for p in player_data_for_table)) or \
+                              (col_idx == 5 and player['xg'] == max(p['xg'] for p in player_data_for_table))
+                cell.set_text_props(weight='bold' if (is_key_metric or is_top_value) else 'normal', 
+                                  color='#333333', size=9)  # 8 -> 9
         
         y_pos -= table_height + card_margin
     
     # ③ 변곡점 설명 카드 (통일된 폭과 정렬, 가장 중요한 텍스트 카드, 여백 최소화)
     if turning_point_explanations:
-        # 제목 (왼쪽 정렬, 진한 색, 굵게, 카드와 정렬)
+        # 제목 (왼쪽 정렬, 진한 색, 굵게, 카드와 정렬, 폰트 크기 증가)
         ax_side.text(card_left + 0.02, y_pos, '변곡점 설명', ha='left', va='top',
-                    fontsize=11, fontweight='bold', color='#222222', transform=ax_side.transAxes)
+                    fontsize=12, fontweight='bold', color='#222222', transform=ax_side.transAxes)
         y_pos -= 0.02  # 여백 더 줄임
         
         # 카드 높이 계산 (여백 최소화 - 더 줄임)
@@ -629,7 +635,7 @@ def plot_player_heatmap_basic(
         )
         ax_side.add_patch(explanation_box)
         
-        # 각 번호 설명을 한 줄로 요약
+        # 각 번호 설명을 한 줄로 요약 (폰트 크기 증가, 핵심 키워드 볼드)
         for idx, explanation_data in enumerate(turning_point_explanations):
             if idx >= len(turning_point_events):
                 break
@@ -651,18 +657,19 @@ def plot_player_heatmap_basic(
             else:
                 summary = f"{event_type_kr} 이벤트"
             
-            # 번호와 함께 표시 (줄 간격 더 줄임)
+            # 번호와 함께 표시 (줄 간격 더 줄임, 폰트 크기 증가, 핵심 내용 볼드)
             final_text = f"{turning_point_numbers[idx]} {summary}"
-            ax_side.text(card_left + 0.04, y_pos - 0.02 - idx * line_spacing, final_text, ha='left', va='top',
-                       fontsize=8, color='#333333', transform=ax_side.transAxes)
+            ax_side.text(card_left + 0.04, y_pos - 0.02 - idx * line_spacing, final_text, 
+                       ha='left', va='top', fontsize=9, color='#333333', weight='bold',
+                       transform=ax_side.transAxes)
         
         y_pos -= explanation_box_height + card_margin
     
     # ④ 전체 설명 카드 (통일된 폭과 정렬, 변곡점 설명보다 낮은 위계, 독립적으로 배치)
     if turning_point.explanation:
-        # 제목 (왼쪽 정렬, 연한 색, 작은 폰트, 카드와 정렬)
+        # 제목 (왼쪽 정렬, 연한 색, 작은 폰트, 카드와 정렬, 폰트 크기 증가)
         ax_side.text(card_left + 0.02, y_pos, '전체 설명', ha='left', va='top',
-                    fontsize=9, fontweight='bold', color='#666666', transform=ax_side.transAxes)
+                    fontsize=10, fontweight='bold', color='#666666', transform=ax_side.transAxes)
         y_pos -= 0.02  # 여백 더 줄임 (0.025 -> 0.02)
         
         # 수비/공격 라인 정보와 설명을 통합 (생략 없이 모두 출력)
@@ -751,9 +758,13 @@ def plot_player_heatmap_basic(
         text_left_margin = card_left + 0.04  # 좌측 여백
         
         for idx, line in enumerate(display_lines):
-            # 생략 없이 모두 표시 (위 여백 줄임)
+            # 생략 없이 모두 표시 (위 여백 줄임, 폰트 크기 증가, 핵심 키워드 볼드)
+            # 핵심 키워드가 포함된 경우 전체 줄을 볼드 처리
+            has_keyword = any(kw in line for kw in ['라인', '전진', '후퇴', '공격', '수비', target_team]) or \
+                         any(char.isdigit() for char in line)
             ax_side.text(text_left_margin, y_pos - 0.02 - idx * line_height, line, 
-                       ha='left', va='top', fontsize=7.5, color='#666666', 
+                       ha='left', va='top', fontsize=8.5, 
+                       color='#666666', weight='bold' if has_keyword else 'normal',
                        transform=ax_side.transAxes)
         
         y_pos -= total_explanation_height
