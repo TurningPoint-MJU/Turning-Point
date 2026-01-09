@@ -11,17 +11,44 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # 패키지 설치
 pip install -r requirements.txt
+
+# 주피터 노트북 사용 시 (선택사항)
+pip install jupyter ipykernel
 ```
 
-### 2. 샘플 실행
+### 2. 실행 방법
+
+#### 방법 A: 주피터 노트북 사용 (권장)
 
 ```bash
-python -m src.main
+# Jupyter 실행
+jupyter notebook
+
+# 또는 JupyterLab 사용
+jupyter lab
 ```
 
-이 명령은 샘플 경기 데이터를 생성하고 변곡점을 탐지한 후 그래프를 생성합니다.
+주피터 노트북에서:
+- `analysis_sample.ipynb`: 샘플 데이터로 테스트
+- `analysis_real.ipynb`: 실제 K리그 데이터 분석
+  - 경기 목록을 10개씩 페이지네이션하여 탐색 가능
+  - 원하는 경기 ID 직접 입력 가능
+  - 이미지가 노트북 셀에 인라인으로 자동 표시
 
-### 3. API 서버 실행
+#### 방법 B: Python 스크립트 실행
+
+```bash
+# 샘플 데이터 실행
+python -m src.main
+
+# 실제 K리그 데이터 실행
+python -m src.main_real
+
+# 특정 경기 ID로 실행
+python -m src.main_real 126288
+```
+
+#### 방법 C: API 서버 실행
 
 ```bash
 uvicorn src.api.main:app --reload
@@ -163,7 +190,15 @@ print(f"움직임 그래프 저장: {result['save_path']}")
 
 ## 실제 K리그 데이터 연동
 
-### 데이터 로더 사용
+### 주피터 노트북 사용 (권장)
+
+`analysis_real.ipynb` 노트북을 사용하면 다음 기능을 제공합니다:
+
+1. **경기 목록 페이지네이션**: 경기 목록을 10개씩 표시하고 `n`(다음), `p`(이전)로 탐색
+2. **경기 ID 입력**: 원하는 경기 ID를 직접 입력하여 분석
+3. **인라인 이미지 표시**: 생성된 그래프가 노트북 셀에 자동으로 표시
+
+### 데이터 로더 사용 (Python 스크립트)
 
 ```python
 from src.data.loader import load_match_by_id, list_available_matches

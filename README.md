@@ -78,7 +78,21 @@ python -m src.main_real
 python -m src.main_real 126288
 ```
 
-#### 방법 C: API 서버 실행
+#### 방법 C: 주피터 노트북 사용 (권장)
+
+```bash
+# Jupyter 실행
+jupyter notebook
+
+# 또는 JupyterLab 사용
+jupyter lab
+```
+
+주피터 노트북에서 다음 파일을 열어 사용하세요:
+- `analysis_sample.ipynb`: 샘플 데이터로 테스트
+- `analysis_real.ipynb`: 실제 K리그 데이터 분석 (경기 ID 입력 및 페이지네이션 지원)
+
+#### 방법 D: API 서버 실행
 
 ```bash
 uvicorn src.api.main:app --reload
@@ -119,9 +133,12 @@ uvicorn src.api.main:app --reload
 ├── docs/                  # 문서
 │   ├── ALGORITHM.md       # 알고리즘 상세 설계
 │   ├── USAGE.md           # 사용 가이드
-│   ├── PROPOSAL.md        # 공모전 제출용 기획서
+│   ├── PROPOSAL.md        # 기획서
 │   ├── DATA_MAPPING.md    # 데이터 매핑 가이드
-│   └── VISUALIZATION.md   # 시각화 기능 상세 가이드
+│   ├── VISUALIZATION.md   # 시각화 기능 상세 가이드
+│   └── CHANGELOG.md       # 변경 이력
+├── analysis_sample.ipynb  # 샘플 데이터 분석 노트북
+├── analysis_real.ipynb     # 실제 데이터 분석 노트북
 └── requirements.txt
 ```
 
