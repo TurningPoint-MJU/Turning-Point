@@ -183,9 +183,9 @@ uvicorn src.api.main:app --reload
 
 | 역할 | 이름 | GitHub | 기여 내용 |
 |------|------|--------|----------|
-| 팀장 | [이지호] | [@ziholee] | 프로젝트 총괄 및 관리 |
-| 기획 | [민창기] | [@ckstar131] | 프로젝트 기획 및 요구사항 정의 |
-| 데이터 분석 | [배성현] | [@BAEYA02] | 데이터 분석 및 알고리즘 설계 |
+| 팀장 | [이지호] | [ziholee](https://github.com/ziholee) | 프로젝트 총괄 및 관리 |
+| 기획 | [민창기] | [ckstar131](https://github.com/ckstar131) | 프로젝트 기획 및 요구사항 정의 |
+| 데이터 분석 | [배성현] | [BAEYA02](https://github.com/BAEYA02) | 데이터 분석 및 알고리즘 설계 |
 
 ## 📝 라이선스
 
