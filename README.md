@@ -109,7 +109,6 @@ uvicorn src.api.main:app --reload
 - **[알고리즘 상세 설계](docs/ALGORITHM.md)**: 모멘텀 점수 계산 공식, 변곡점 탐지 알고리즘, 선수 분석 알고리즘, 패스 네트워크 분석
 - **[시각화 가이드](docs/VISUALIZATION.md)**: 각 그래프의 요소 설명 및 해석 방법
 - **[데이터 매핑 가이드](docs/DATA_MAPPING.md)**: K리그 데이터 형식 및 매핑 방법
-- **[프로젝트 기획서](docs/PROPOSAL.md)**: 기획서
 - **[변경 이력](docs/CHANGELOG.md)**: 주요 변경사항 및 업데이트 내역
 
 ## 🏗️ 프로젝트 구조
@@ -134,7 +133,6 @@ uvicorn src.api.main:app --reload
 ├── docs/                  # 문서
 │   ├── ALGORITHM.md       # 알고리즘 상세 설계
 │   ├── USAGE.md           # 사용 가이드
-│   ├── PROPOSAL.md        # 기획서
 │   ├── DATA_MAPPING.md    # 데이터 매핑 가이드
 │   ├── VISUALIZATION.md   # 시각화 기능 상세 가이드
 │   └── CHANGELOG.md       # 변경 이력
